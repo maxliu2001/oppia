@@ -115,6 +115,7 @@ export class TranslationSuggestionReviewModalComponent implements OnInit {
   isLastItem!: boolean;
   isFirstItem: boolean = true;
   reviewMessage!: string;
+  reviewer!: string;
   status!: string;
   heading: string = 'Your Translation Contributions';
   subheading!: string;
@@ -364,6 +365,7 @@ export class TranslationSuggestionReviewModalComponent implements OnInit {
     // a review message the second element of the threadMessages
     // array contains the actual review message.
     if (threadMessages[1] !== undefined) {
+      this.reviewer = threadMessages[1].authorUsername;
       this.reviewMessage = threadMessages[1].text;
     }
   }
@@ -418,10 +420,11 @@ export class TranslationSuggestionReviewModalComponent implements OnInit {
 
   acceptAndReviewNext(): void {
     this.finalCommitMessage = this.generateCommitMessage();
-    if (this.translationUpdated) {
-      this.reviewMessage = this.reviewMessage + ': This suggestion' +
-        ' was submitted with reviewer edits.';
-    }
+    const reviewMessageForSubmitter = this.reviewMessage + (
+      this.translationUpdated ? (
+        (this.reviewMessage.length > 0 ? ': ' : '') +
+        '(Note: This suggestion was submitted with reviewer edits.)') :
+      '');
     this.resolvingSuggestion = true;
     this.siteAnalyticsService.registerContributorDashboardAcceptSuggestion(
       'Translation');
@@ -429,7 +432,7 @@ export class TranslationSuggestionReviewModalComponent implements OnInit {
     this.contributionAndReviewService.reviewExplorationSuggestion(
       this.activeSuggestion.target_id, this.activeSuggestionId,
       AppConstants.ACTION_ACCEPT_SUGGESTION,
-      this.reviewMessage, this.finalCommitMessage,
+      reviewMessageForSubmitter, this.finalCommitMessage,
       this.resolveSuggestionAndUpdateModal.bind(this),
       (errorMessage) => {
         this.rejectAndReviewNext(`Invalid Suggestion: ${errorMessage}`);
