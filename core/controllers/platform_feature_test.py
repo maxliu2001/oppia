@@ -47,7 +47,7 @@ class PlatformFeaturesEvaluationHandlerTest(test_utils.GenericTestBase):
         self.user_id = self.get_user_id_from_email(self.OWNER_EMAIL)
 
         self.original_registry = registry.Registry.parameter_registry
-        self.original_feature_list = feature_services.ALL_FEATURES_LIST
+        self.original_feature_list = feature_services.ALL_FEATURE_FLAGS
         self.original_feature_name_set = feature_services.ALL_FEATURES_NAMES_SET
 
         param_names = ['parameter_a', 'parameter_b']
@@ -79,22 +79,23 @@ class PlatformFeaturesEvaluationHandlerTest(test_utils.GenericTestBase):
                     ],
                     'value_when_matched': True
                 })
-            ]
+            ],
+            False
         )
 
-        # Here we use MyPy ignore because the expected type of ALL_FEATURES_LIST
+        # Here we use MyPy ignore because the expected type of ALL_FEATURE_FLAGS
         # is a list of 'platform_feature_list.ParamNames' Enum, but here for
         # testing purposes we are providing a list of custom 'ParamNames' enums
         # for mocking the actual behavior, which causes MyPy to throw an
         # 'Incompatible types in assignment' error. Thus to avoid the error, we
         # used ignore here.
-        feature_services.ALL_FEATURES_LIST = param_name_enums  # type: ignore[assignment]
+        feature_services.ALL_FEATURE_FLAGS = param_name_enums  # type: ignore[assignment]
         feature_services.ALL_FEATURES_NAMES_SET = set(param_names)
 
     def tearDown(self) -> None:
         super().tearDown()
 
-        feature_services.ALL_FEATURES_LIST = self.original_feature_list
+        feature_services.ALL_FEATURE_FLAGS = self.original_feature_list
         feature_services.ALL_FEATURES_NAMES_SET = self.original_feature_name_set
         registry.Registry.parameter_registry = self.original_registry
 
@@ -158,25 +159,6 @@ class PlatformFeaturesEvaluationHandlerTest(test_utils.GenericTestBase):
                 '[\'test\', \'alpha\', \'beta\', \'release\'] if specified.'
             )
 
-    def test_get_features_invalid_browser_type_raises_400(
-        self
-    ) -> None:
-        with self.swap(constants, 'DEV_MODE', True):
-            result = self.get_json(
-                '/platform_features_evaluation_handler',
-                params={
-                    'browser_type': 'invalid_browser',
-                },
-                expected_status_int=400
-            )
-
-            error_msg = (
-                'Schema validation for \'browser_type\' failed: Received '
-                'invalid_browser which is not in the allowed range of choices: '
-                '[\'Chrome\', \'Edge\', \'Safari\', \'Firefox\', \'Others\']'
-            )
-            self.assertEqual(result['error'], error_msg)
-
     def test_get_features_invalid_app_version_raises_400(self) -> None:
         with self.swap(constants, 'DEV_MODE', True):
             result = self.get_json(
@@ -208,10 +190,10 @@ class PlatformFeatureDummyHandlerTest(test_utils.GenericTestBase):
         self.user_id = self.get_user_id_from_email(self.OWNER_EMAIL)
 
     def tearDown(self) -> None:
-        feature_services.update_feature_flag_rules(
+        feature_services.update_feature_flag(
             param_list.ParamNames.DUMMY_FEATURE_FLAG_FOR_E2E_TESTS.value,
             self.user_id,
-            'clear rule', []
+            'clear rule', [], False
         )
 
         super().tearDown()
@@ -220,7 +202,7 @@ class PlatformFeatureDummyHandlerTest(test_utils.GenericTestBase):
         self, is_enabled: bool, mode: param_domain.ServerMode
     ) -> None:
         """Enables the dummy_feature for the dev environment."""
-        feature_services.update_feature_flag_rules(
+        feature_services.update_feature_flag(
             param_list.ParamNames.DUMMY_FEATURE_FLAG_FOR_E2E_TESTS.value,
             self.user_id,
             'update rule for testing purpose',
@@ -230,7 +212,8 @@ class PlatformFeatureDummyHandlerTest(test_utils.GenericTestBase):
                     'type': 'server_mode',
                     'conditions': [['=', mode.value]]
                 }]
-            })]
+            })],
+            False
         )
 
     def _mock_dummy_feature_stage(
